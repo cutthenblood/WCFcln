@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 
-namespace RISIQueryService
+namespace RISIQueryService.QueryClasses
 {
    public class QueryClassesRepo
     {

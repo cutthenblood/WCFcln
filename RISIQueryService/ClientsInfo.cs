@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Xml.Linq;
 
-namespace RISIQueryService
+namespace RISIQueryService.ClientsInfo
 {
     public class ClientsInfo
     {
@@ -106,45 +107,73 @@ namespace RISIQueryService
         }
     }
 
-
-
-    public class AssemblyConfigParser
+    public class ClientsInfoWatcher
     {
-        public static Dictionary<string,string> EndpointURI(string path,string assemblyname,string typename)
+        internal string path;
+        private Timer tm;
+        private DateTime dt;
+        public void BeginWatching()
         {
-            if (!File.Exists(path+"\\"+assemblyname + ".config"))
-                return null;
-            Dictionary<string, string> endpointURIs =new Dictionary<string, string>();
-            List<ClientsInfo> clientInfo=new List<ClientsInfo>();
-
-            XDocument doc = XDocument.Load(path + "\\" + assemblyname + ".config");
-            foreach (XElement el in doc.Root.Elements())
-            {
-                if (el.Name == assemblyname)
-                    foreach(var assemblySection in el.Elements())
-                        if(assemblySection.Name==typename)
-                            foreach(XElement clientSection in assemblySection.Elements())
-                                if (clientSection.Name == "Clinet")
-                                {
-                                  //  foreach(XAttribute attr in clientSection.Attributes())
-                                   // if(attr.Name=="name"
-                                }
-                            
-                        //    foreach (XElement typeSection in assemblySection.Elements())
-                        //        {
-                        //if(typeSection.Name=="endpointURI")
-                        //    foreach (XAttribute attr in typeSection.Attributes())
-                        //    {
-                        //        if(attr.Name=="bindingName")
-                        //            endpointURIs.Add(attr.Value,typeSection.Value);
-                        //    }
-                        //        }
-
-            }
-            return endpointURIs;
-
-
+            path = AppDomain.CurrentDomain.BaseDirectory + "ClientsInfo.xml";
+            var fi = new FileInfo(path);
+            dt = fi.LastWriteTime;
+            tm = new Timer(TimerCallback, null, 0, 5000);
+            
         }
-        //public System.ServiceModel.Security.UserNamePasswordClientCredential Credentials
+
+        private void TimerCallback(object state)
+        {
+
+            //var lwt = (DateTime)state;
+            var fi = new FileInfo(path);
+            Console.WriteLine("Timer started!  " + dt.ToString("dd/MM/yyyy hh:mm:ss"));
+            if (dt < fi.LastWriteTime)
+            {
+                Console.WriteLine("****  info changed   ************");
+                Console.WriteLine(fi.LastWriteTime.ToString("dd/MM/yyyy hh:mm:ss"));
+                ClinetsInfoParser.Parse();
+                dt = fi.LastWriteTime;
+            }
+        }
     }
+
+    //public class AssemblyConfigParser
+    //{
+    //    public static Dictionary<string,string> EndpointURI(string path,string assemblyname,string typename)
+    //    {
+    //        if (!File.Exists(path+"\\"+assemblyname + ".config"))
+    //            return null;
+    //        Dictionary<string, string> endpointURIs =new Dictionary<string, string>();
+    //        List<ClientsInfo> clientInfo=new List<ClientsInfo>();
+
+    //        XDocument doc = XDocument.Load(path + "\\" + assemblyname + ".config");
+    //        foreach (XElement el in doc.Root.Elements())
+    //        {
+    //            if (el.Name == assemblyname)
+    //                foreach(var assemblySection in el.Elements())
+    //                    if(assemblySection.Name==typename)
+    //                        foreach(XElement clientSection in assemblySection.Elements())
+    //                            if (clientSection.Name == "Clinet")
+    //                            {
+    //                              //  foreach(XAttribute attr in clientSection.Attributes())
+    //                               // if(attr.Name=="name"
+    //                            }
+                            
+    //                    //    foreach (XElement typeSection in assemblySection.Elements())
+    //                    //        {
+    //                    //if(typeSection.Name=="endpointURI")
+    //                    //    foreach (XAttribute attr in typeSection.Attributes())
+    //                    //    {
+    //                    //        if(attr.Name=="bindingName")
+    //                    //            endpointURIs.Add(attr.Value,typeSection.Value);
+    //                    //    }
+    //                    //        }
+
+    //        }
+    //        return endpointURIs;
+
+
+    //    }
+    //    //public System.ServiceModel.Security.UserNamePasswordClientCredential Credentials
+    //}
 }

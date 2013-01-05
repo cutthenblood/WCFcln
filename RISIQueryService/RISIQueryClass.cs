@@ -12,7 +12,7 @@ namespace RISIQueryService
     {
        private List<IDataBase> GetAssemblies()
        {
-           AssemblyFactory factory = new AssemblyFactory();
+           var factory = new AssemblyFactory();
            factory.Load();
            return factory.Queryprocessors;
        }
