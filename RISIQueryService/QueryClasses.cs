@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using NLog;
 
 namespace RISIQueryService.QueryClasses
 {
@@ -36,22 +37,22 @@ namespace RISIQueryService.QueryClasses
    public class QueryClassesManager
    {
        public QueryClassesRepo Repo;
-     
-       public void LoadDBproxies(bool reload = false)
+       private static Logger logger = LogManager.GetCurrentClassLogger();
+       public void LoadQueryClasses(bool reload = false)
        {
 
 
            Repo = QueryClassesRepo.Instance;
            if (reload)
                Repo.QueryClasses.Clear();
-           var path = AppDomain.CurrentDomain.BaseDirectory + "\\DBproxies";
+           var path = AppDomain.CurrentDomain.BaseDirectory + "\\QueryProcessors";
        
            if (!Directory.Exists(path))
                Directory.CreateDirectory(path);
            foreach (var dll in Directory.GetFiles(path, "*.dll"))
            {
                var name = Path.GetFileNameWithoutExtension(dll);
-               if (!name.Contains("proxy"))
+               if (!name.Contains("Query"))
                {
                  //  logger.Info("assembly," + name + " is not proxyclass!!");
                    continue;
@@ -64,11 +65,32 @@ namespace RISIQueryService.QueryClasses
                }
                catch (Exception exp)
                {
-                 //  logger.Warn("assembly," + name + " is not loaded!!");
+                    logger.Warn("assembly," + name + " is not loaded!!");
+                   throw exp;
                }
 
            }
        }
     }
+
+   public class QueryClassesFactory
+   {
+       private static Logger logger = LogManager.GetCurrentClassLogger();
+       public IDataBase Create(KeyValuePair<string, Assembly> queryclass)
+       {
+           var T = queryclass.Value.GetTypes();
+           try
+           {
+               var instance = (IDataBase)Activator.CreateInstance(T[0]);
+               return instance;
+           }
+           catch (Exception exp)
+           {
+               logger.Warn("cannot create ", T[0].FullName);
+               throw exp;
+           }
+
+       }
+   }
 
 }

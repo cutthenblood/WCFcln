@@ -13,6 +13,7 @@ namespace RISIQueryService.ClientsInfo
         public string Name { get; set; }
         public string Description { get; set; }
         public string Id { get; set; }
+       // public DateTime LastWriteTime { get; set; }
         public class AssemblyInfo
         {
             public string TypeName { get; set; }
@@ -35,8 +36,13 @@ namespace RISIQueryService.ClientsInfo
     {
         private static readonly Lazy<ClientsInfoRepo> lazy =
             new Lazy<ClientsInfoRepo>(() => new ClientsInfoRepo());
-        public ClientsInfoRepo() { _clients = new List<ClientsInfo>(); }
-        List<ClientsInfo> _clients;
+        public ClientsInfoRepo()
+        {
+            LastUpdateTime=new DateTime(1900,1,1);
+            _clients = new List<ClientsInfo>();
+        }
+        private List<ClientsInfo> _clients;
+        public DateTime LastUpdateTime { get; set; }
 
         public List<ClientsInfo> Clients
         {
@@ -57,8 +63,13 @@ namespace RISIQueryService.ClientsInfo
         public static void Parse()
         {
             var path = AppDomain.CurrentDomain.BaseDirectory + "ClientsInfo.xml";
-            XDocument doc = XDocument.Load(path);
+            var fi = new FileInfo(path);
             ClientsInfoRepo repo=ClientsInfoRepo.Instance;
+
+            if (fi.LastWriteTime <= repo.LastUpdateTime) return;
+            
+            XDocument doc = XDocument.Load(path);
+            
             foreach (XElement el in doc.Root.Elements())
             {
                 if (el.Name == "Clients")
@@ -100,7 +111,9 @@ namespace RISIQueryService.ClientsInfo
                                                 if(edpattr.Name=="name")
                                                     client.EndpoinURIs.Add(edpattr.Value,clientendpoints.Value);
                             }
+                            
                             repo.Clients.Add(client);
+                            repo.LastUpdateTime = fi.LastWriteTime;
                         }
             }
         

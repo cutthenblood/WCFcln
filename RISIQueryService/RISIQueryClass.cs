@@ -1,4 +1,9 @@
-﻿using RISIService;
+﻿using System.Collections.Concurrent;
+using System.ServiceModel;
+using System.Threading.Tasks;
+using NLog;
+using RISIQueryService.QueryClasses;
+using RISIService;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -8,33 +13,67 @@ using System.Text;
 
 namespace RISIQueryService
 {
-   public class RISIQueryClass:IRISIQueryContract
+    [ServiceBehavior(ConcurrencyMode = ConcurrencyMode.Multiple, InstanceContextMode = InstanceContextMode.PerCall)]
+    public class RISIQueryClass : IRISIQueryContract
     {
-       private List<IDataBase> GetAssemblies()
-       {
-           var factory = new AssemblyFactory();
-           factory.Load();
-           return factory.Queryprocessors;
-       }
-
-        public void Subscribe(string uri)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void PostQuery(QueryData data)
-        {
-            var mgr = GetAssemblies();
-            List<byte[]> result = new List<byte[]>();
-            mgr.ForEach(x => result.Add(x.ExecuteQuery(data)));
-            var dt=Packer.Unpack(result[0]);
-            DataTable tbl = new DataTable();
-            tbl.ReadXml(dt);
-        }
-
+        private static Logger logger = LogManager.GetCurrentClassLogger();
+       
+     
         List<QueryResult> IRISIQueryContract.PostQuery(QueryData data)
         {
-            throw new NotImplementedException();
+            var result = new ConcurrentBag<byte[]>();
+            //  new List<byte[]>();
+            var queryClassesManager = new QueryClassesManager();
+            var factory = new QueryClassesFactory();
+            try
+            {
+                queryClassesManager.LoadQueryClasses();
+            }
+            catch (Exception exp)
+            {
+                logger.Warn("queryClassesManager, failed \r\n"+exp.ToString());
+                throw new FaultException("queryClassesManager, failed"); 
+            }
+           
+            var queryClasses = queryClassesManager.Repo.QueryClasses;
+
+            Parallel.ForEach(queryClasses, currentClass =>
+                {
+                    try
+                    {
+                      var  instance = factory.Create(currentClass);
+                        result.Add(instance.ExecuteQuery(data));
+                    }
+                    catch (FaultException faultEx)
+                    {
+                        logger.Warn("failed on executing query \r\n" + faultEx.ToString());
+                    }
+                    catch (Exception exp)
+                    {
+
+                        logger.Warn("failed creating IDataBase instance \r\n" + exp.ToString());
+                    }
+                   
+                    
+                });
+            List<QueryResult> re=null;
+            try
+            {
+                re = result.ToQueryResult();
+            }
+            catch (Exception exp)
+            {
+                logger.Warn("failed creating results list \r\n" + exp.ToString());
+                throw new FaultException("failed creating results list");
+            }
+           
+            return re;
+
         }
+
+        //public byte[] CheckRowUpdate(DataRow row)
+        //{
+            
+        //}
     }
 }

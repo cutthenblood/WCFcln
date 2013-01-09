@@ -7,6 +7,10 @@ using System.Text;
 
 namespace RISIQueryService
 {
+
+    
+
+
     public class AssemblyFactory
     {
         private List<IDataBase> _queryprocessors;
